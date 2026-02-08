@@ -65,14 +65,15 @@ function updateReactionDisplay(postId, reactions) {
 
 // Get CSRF token from meta tag or cookie
 function getCsrfToken() {
-    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    if (tokenMeta) {
-        return tokenMeta.getAttribute('content');
+    // Try to get from form fields
+    const tokenField = document.querySelector('input[name="csrf_token"]');
+    if (tokenField) {
+        return tokenField.value;
     }
     // Fallback to cookie
     const cookieValue = document.cookie
         .split('; ')
-        .find(row => row.startsWith('csrf_token='));
+        .find(row => row.startsWith('csrf_token=') || row.startsWith('session='));
     return cookieValue ? cookieValue.split('=')[1] : '';
 }
 
