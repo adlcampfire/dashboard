@@ -17,11 +17,11 @@ def init_database():
         admin = User.query.filter_by(username='bennyboy635').first()
         if not admin:
             # Create default admin account
-            admin = User(username='bennyboy635', is_admin=True)
+            admin = User(username='admin', is_admin=True)
             admin.set_password('changemeasap')
             db.session.add(admin)
             db.session.commit()
-            print("✓ Default admin account created (bennyboy635/changemeasap)")
+            print("✓ Default admin account created (admin/changemeasap)")
         else:
             print("ℹ Default admin account already exists")
         
@@ -60,7 +60,7 @@ def init_database():
         print("Database initialization complete!")
         print("="*50)
         print("\nDefault Admin Credentials:")
-        print("  Username: bennyboy635")
+        print("  Username: admin")
         print("  Password: changemeasap")
         print("\nPlease change the default password after first login!")
 

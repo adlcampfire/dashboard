@@ -43,7 +43,7 @@ A comprehensive Flask-based dashboard for managing hackathon teams and activitie
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.dev/adlcampfire/dashboard
 cd dashboard
 ```
 
@@ -68,7 +68,7 @@ python init_db.py
 
 This will:
 - Create database tables
-- Create default admin account (bennyboy635/changemeasap)
+- Create default admin account (admin/changemeasap)
 - Generate 10 initial registration codes
 - Create upload directories
 
@@ -90,7 +90,7 @@ The application will be available at `http://localhost:5000`
 ## Default Credentials
 
 **Admin Account:**
-- Username: `bennyboy635`
+- Username: `admin`
 - Password: `changemeasap`
 
 **⚠️ IMPORTANT: Change the default password immediately after first login!**
