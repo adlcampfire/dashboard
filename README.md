@@ -74,6 +74,13 @@ This will:
 
 ### 5. Run the Application
 
+#### Development Mode (with debug enabled):
+```bash
+export FLASK_DEBUG=True
+python app.py
+```
+
+#### Production Mode (debug disabled):
 ```bash
 python app.py
 ```
@@ -159,6 +166,9 @@ export SECRET_KEY='your-secret-key-here'
 export DATABASE_URL='sqlite:///campfire.db'
 # For PostgreSQL:
 # export DATABASE_URL='postgresql://user:password@localhost/dbname'
+
+# Flask Debug Mode (default: False)
+export FLASK_DEBUG=True  # Only for development
 ```
 
 ### Production Deployment
@@ -167,7 +177,7 @@ For production deployment:
 
 1. Set `SECRET_KEY` to a strong random value
 2. Use PostgreSQL instead of SQLite
-3. Set `DEBUG=False` in app.py
+3. Ensure `FLASK_DEBUG` is not set or set to False
 4. Use a production WSGI server (e.g., Gunicorn)
 5. Set up proper file storage (e.g., S3)
 6. Enable HTTPS
