@@ -44,10 +44,15 @@
 
 <div class="quick-actions">
     <h2>Quick Actions</h2>
-    <div class="action-buttons">
-        <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Manage Users</a>
-        <a href="{{ url_for('admin_teams') }}" class="btn btn-primary">Manage Teams</a>
-        <a href="{{ url_for('admin_codes') }}" class="btn btn-primary">Manage Codes</a>
+    <div class="action-buttons" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-primary">👥 Manage Users</a>
+        <a href="{{ url_for('admin_teams') }}" class="btn btn-primary">🏆 Manage Teams</a>
+        <a href="{{ url_for('admin_codes') }}" class="btn btn-primary">🔑 Manage Codes</a>
+        <a href="{{ url_for('admin_announcements') }}" class="btn btn-primary">📢 Announcements</a>
+        <a href="{{ url_for('admin_moderation') }}" class="btn btn-primary">🛡️ Moderation Queue</a>
+        <a href="{{ url_for('admin_results') }}" class="btn btn-primary">🏅 Voting Results</a>
+        <a href="{{ url_for('admin_audit_logs') }}" class="btn btn-primary">📋 Audit Logs</a>
+        <a href="{{ url_for('admin_settings') }}" class="btn btn-primary">⚙️ Site Settings</a>
     </div>
 </div>
 {% endblock %}
