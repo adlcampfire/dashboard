@@ -1,0 +1,195 @@
+/* Dark Mode Styles for Campfire Adelaide Dashboard */
+
+/* Root variables for theming */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #ffffff;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --input-border: #ddd;
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --border-color: #444444;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --input-bg: #2d2d2d;
+    --input-border: #444444;
+}
+
+/* Smooth transitions for theme changes */
+.theme-transition,
+.theme-transition * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* Apply theme colors to common elements */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.container, .card, .post-card, .comment-card {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    box-shadow: var(--card-shadow);
+}
+
+.sidebar, .nav-menu {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+input, textarea, select {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border-color: var(--input-border);
+}
+
+/* Dark mode adjustments for specific elements */
+[data-theme="dark"] .btn-secondary {
+    background-color: #444;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: #555;
+}
+
+[data-theme="dark"] a {
+    color: #6eb3ff;
+}
+
+[data-theme="dark"] a:hover {
+    color: #8bc5ff;
+}
+
+[data-theme="dark"] .flash {
+    border-left-width: 4px;
+}
+
+[data-theme="dark"] .flash.success {
+    background-color: #2d4a2d;
+    border-color: #4CAF50;
+}
+
+[data-theme="dark"] .flash.error {
+    background-color: #4a2d2d;
+    border-color: #f44336;
+}
+
+[data-theme="dark"] .flash.warning {
+    background-color: #4a4a2d;
+    border-color: #ff9800;
+}
+
+[data-theme="dark"] .flash.info {
+    background-color: #2d3a4a;
+    border-color: #2196F3;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background-color: var(--bg-secondary);
+}
+
+/* Dark mode for images */
+[data-theme="dark"] img {
+    opacity: 0.9;
+}
+
+[data-theme="dark"] img:hover {
+    opacity: 1;
+}
+
+/* Dark mode for code blocks */
+[data-theme="dark"] code, 
+[data-theme="dark"] pre {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border-color: #444;
+}
+
+/* Dark mode for tables */
+[data-theme="dark"] table {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] th {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] td {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+/* Dark mode for modals */
+[data-theme="dark"] .modal-content {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-header {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    border-top-color: var(--border-color);
+}
+
+/* Dark mode for dropdowns */
+[data-theme="dark"] .dropdown-menu {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .dropdown-item {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+/* Dark mode for scrollbar (webkit browsers) */
+[data-theme="dark"] ::-webkit-scrollbar {
+    width: 12px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--bg-secondary);
+    border-radius: 6px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--bg-tertiary);
+}

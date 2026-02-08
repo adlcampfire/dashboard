@@ -2,21 +2,31 @@
 import os
 import random
 import string
+import json
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, render_template, redirect, url_for, flash, request, abort
+from flask import Flask, render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
-from models import db, User, Team, Post, RegistrationCode
+from models import (db, User, Team, Post, RegistrationCode, Reaction, Comment, 
+                    Mention, Vote, Announcement, PostMedia, Report, AuditLog, SiteSettings)
 from forms import (LoginForm, RegistrationForm, PostForm, ProfilePictureForm,
-                   CreateUserForm, CreateTeamForm, AssignTeamForm, GenerateCodesForm)
+                   CreateUserForm, CreateTeamForm, AssignTeamForm, GenerateCodesForm,
+                   CommentForm, VoteForm, AnnouncementForm, ReportForm, ProfileUpdateForm,
+                   TeamAvatarForm, BrandingForm, ModerationActionForm)
+from utils import (parse_mentions, highlight_mentions, sanitize_html, validate_url,
+                   get_site_settings, allowed_file, generate_unique_filename, 
+                   create_audit_log, format_time_ago)
+from decorators import rate_limit, audit_log, judge_required
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///campfire.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size for videos
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 
 # Initialize extensions
@@ -25,6 +35,14 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
+
+# Initialize rate limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 
 @login_manager.user_loader
@@ -87,6 +105,22 @@ def time_ago(dt):
 app.jinja_env.filters['time_ago'] = time_ago
 
 
+@app.context_processor
+def inject_global_data():
+    """Inject data into all templates"""
+    settings = get_site_settings()
+    
+    # Get active announcements
+    active_announcements = Announcement.query.filter(
+        (Announcement.expires_at == None) | (Announcement.expires_at > datetime.utcnow())
+    ).order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc()).all()
+    
+    return {
+        'site_settings': settings,
+        'active_announcements': active_announcements
+    }
+
+
 # Authentication routes
 @app.route('/')
 def index():
@@ -109,14 +143,44 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember_me.data)
-            next_page = request.args.get('next')
-            if not next_page or not next_page.startswith('/'):
-                next_page = url_for('index')
-            flash(f'Welcome back, {user.username}!', 'success')
-            return redirect(next_page)
+            # Check if user is banned
+            if user.is_banned:
+                if user.banned_until and user.banned_until > datetime.utcnow():
+                    flash(f'Your account is banned until {user.banned_until.strftime("%Y-%m-%d %H:%M")}. Reason: {user.ban_reason}', 'error')
+                elif not user.banned_until:
+                    flash(f'Your account has been permanently banned. Reason: {user.ban_reason}', 'error')
+                else:
+                    # Ban expired, remove it
+                    user.is_banned = False
+                    user.banned_until = None
+                    user.ban_reason = None
+                    db.session.commit()
+            
+            if not user.is_banned:
+                login_user(user, remember=form.remember_me.data)
+                
+                # Create audit log
+                create_audit_log(
+                    user_id=user.id,
+                    action_type='login',
+                    action_details={'username': user.username},
+                    ip_address=request.remote_addr
+                )
+                
+                next_page = request.args.get('next')
+                if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('index')
+                flash(f'Welcome back, {user.username}!', 'success')
+                return redirect(next_page)
         else:
             flash('Invalid username or password', 'error')
+            # Log failed login attempt
+            create_audit_log(
+                user_id=None,
+                action_type='failed_login',
+                action_details={'username': form.username.data},
+                ip_address=request.remote_addr
+            )
     
     return render_template('login.html', form=form)
 
@@ -154,6 +218,12 @@ def register():
 @login_required
 def logout():
     """Logout current user"""
+    create_audit_log(
+        user_id=current_user.id,
+        action_type='logout',
+        action_details={'username': current_user.username},
+        ip_address=request.remote_addr
+    )
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
@@ -307,19 +377,40 @@ def user_dashboard():
 @login_required
 def profile():
     """User profile"""
-    form = ProfilePictureForm()
+    form = ProfileUpdateForm()
     
     if form.validate_on_submit():
-        filename = save_upload(form.profile_picture.data, 'profiles')
-        if filename:
-            current_user.profile_picture = filename
+        updated = False
+        
+        # Update profile picture
+        if form.profile_picture.data:
+            filename = save_upload(form.profile_picture.data, 'profiles')
+            if filename:
+                current_user.profile_picture = filename
+                updated = True
+        
+        # Update social links
+        if form.github_url.data:
+            current_user.github_url = form.github_url.data
+            updated = True
+        if form.linkedin_url.data:
+            current_user.linkedin_url = form.linkedin_url.data
+            updated = True
+        if form.twitter_url.data:
+            current_user.twitter_url = form.twitter_url.data
+            updated = True
+        if form.portfolio_url.data:
+            current_user.portfolio_url = form.portfolio_url.data
+            updated = True
+        
+        if updated:
             db.session.commit()
-            flash('Profile picture updated successfully!', 'success')
+            flash('Profile updated successfully!', 'success')
             return redirect(url_for('profile'))
         else:
-            flash('Invalid file type. Please upload a PNG or JPG image.', 'error')
+            flash('No changes made.', 'info')
     
-    posts = Post.query.filter_by(user_id=current_user.id).order_by(Post.created_at.desc()).all()
+    posts = Post.query.filter_by(user_id=current_user.id, deleted_at=None).order_by(Post.created_at.desc()).all()
     return render_template('user/profile.html', form=form, posts=posts)
 
 
@@ -331,7 +422,7 @@ def team_timeline():
         flash('You are not assigned to a team yet.', 'warning')
         return redirect(url_for('user_dashboard'))
     
-    posts = Post.query.filter_by(team_id=current_user.team_id).order_by(Post.created_at.desc()).all()
+    posts = Post.query.filter_by(team_id=current_user.team_id, deleted_at=None).order_by(Post.created_at.desc()).all()
     return render_template('user/team_timeline.html', posts=posts)
 
 
@@ -339,7 +430,7 @@ def team_timeline():
 @login_required
 def global_timeline():
     """Global timeline"""
-    posts = Post.query.filter_by(is_global=True).order_by(Post.created_at.desc()).all()
+    posts = Post.query.filter_by(is_global=True, deleted_at=None).order_by(Post.created_at.desc()).all()
     return render_template('user/global_timeline.html', posts=posts)
 
 
@@ -376,6 +467,219 @@ def create_post():
             return redirect(url_for('team_timeline'))
     
     return render_template('user/create_post.html', form=form)
+
+
+# API Routes for AJAX interactions
+
+@app.route('/api/reaction/<int:post_id>', methods=['POST'])
+@login_required
+@rate_limit(100, 60, 'reactions')
+def toggle_reaction(post_id):
+    """Toggle reaction on a post"""
+    post = Post.query.get_or_404(post_id)
+    data = request.get_json()
+    reaction_type = data.get('reaction_type')
+    
+    if not reaction_type or reaction_type not in ['like', 'love', 'celebrate', 'idea', 'fire', 'applause']:
+        return jsonify({'success': False, 'message': 'Invalid reaction type'}), 400
+    
+    # Check if reaction exists
+    existing_reaction = Reaction.query.filter_by(
+        post_id=post_id,
+        user_id=current_user.id,
+        reaction_type=reaction_type
+    ).first()
+    
+    if existing_reaction:
+        # Remove reaction
+        db.session.delete(existing_reaction)
+        db.session.commit()
+        action = 'removed'
+    else:
+        # Add reaction
+        reaction = Reaction(
+            post_id=post_id,
+            user_id=current_user.id,
+            reaction_type=reaction_type
+        )
+        db.session.add(reaction)
+        db.session.commit()
+        action = 'added'
+    
+    # Get updated reaction counts
+    reactions_data = {}
+    for rtype in ['like', 'love', 'celebrate', 'idea', 'fire', 'applause']:
+        count = Reaction.query.filter_by(post_id=post_id, reaction_type=rtype).count()
+        user_reacted = Reaction.query.filter_by(
+            post_id=post_id,
+            user_id=current_user.id,
+            reaction_type=rtype
+        ).first() is not None
+        reactions_data[rtype] = {
+            'count': count,
+            'user_reacted': user_reacted
+        }
+    
+    return jsonify({
+        'success': True,
+        'action': action,
+        'reactions': reactions_data
+    })
+
+
+@app.route('/api/comment/<int:post_id>', methods=['POST'])
+@login_required
+@rate_limit(30, 60, 'comments')
+def add_comment(post_id):
+    """Add a comment to a post"""
+    post = Post.query.get_or_404(post_id)
+    data = request.get_json()
+    content = data.get('content', '').strip()
+    
+    if not content:
+        return jsonify({'success': False, 'message': 'Comment cannot be empty'}), 400
+    
+    if len(content) > 1000:
+        return jsonify({'success': False, 'message': 'Comment too long (max 1000 characters)'}), 400
+    
+    # Sanitize content before storing
+    content_sanitized = sanitize_html(content)
+    
+    # Create comment with sanitized content
+    comment = Comment(
+        post_id=post_id,
+        user_id=current_user.id,
+        content=content_sanitized  # Store sanitized content
+    )
+    db.session.add(comment)
+    db.session.flush()
+    
+    # Parse mentions from original content
+    mentions = parse_mentions(content, current_user.id, comment_id=comment.id)
+    for mention in mentions:
+        db.session.add(mention)
+    
+    db.session.commit()
+    
+    # Return comment data
+    comment_data = {
+        'id': comment.id,
+        'content': content_sanitized,
+        'content_html': highlight_mentions(content_sanitized),
+        'time_ago': format_time_ago(comment.created_at),
+        'user': {
+            'id': current_user.id,
+            'username': current_user.username,
+            'profile_picture': f'/static/uploads/profiles/{current_user.profile_picture}' if current_user.profile_picture else None
+        },
+        'can_delete': True  # Current user can delete their own comment
+    }
+    
+    return jsonify({'success': True, 'comment': comment_data})
+
+
+@app.route('/api/comment/<int:comment_id>', methods=['DELETE'])
+@login_required
+def delete_comment(comment_id):
+    """Delete a comment"""
+    comment = Comment.query.get_or_404(comment_id)
+    
+    # Check permissions
+    if comment.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    # Soft delete
+    comment.deleted = True
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+
+@app.route('/api/comments/<int:post_id>')
+@login_required
+def get_comments(post_id):
+    """Get comments for a post"""
+    post = Post.query.get_or_404(post_id)
+    comments = Comment.query.filter_by(post_id=post_id, deleted=False).order_by(Comment.created_at).all()
+    
+    comments_data = []
+    for comment in comments:
+        content_sanitized = sanitize_html(comment.content)
+        comments_data.append({
+            'id': comment.id,
+            'content': comment.content,
+            'content_html': highlight_mentions(content_sanitized),
+            'time_ago': format_time_ago(comment.created_at),
+            'user': {
+                'id': comment.user.id,
+                'username': comment.user.username,
+                'profile_picture': f'/static/uploads/profiles/{comment.user.profile_picture}' if comment.user.profile_picture else None
+            },
+            'can_delete': comment.user_id == current_user.id or current_user.is_admin
+        })
+    
+    return jsonify({'success': True, 'comments': comments_data})
+
+
+@app.route('/api/users/search')
+@login_required
+def search_users():
+    """Search users for mentions"""
+    query = request.args.get('q', '').strip()
+    
+    if len(query) < 1:
+        users = User.query.limit(10).all()
+    else:
+        users = User.query.filter(User.username.ilike(f'%{query}%')).limit(10).all()
+    
+    users_data = [{
+        'id': user.id,
+        'username': user.username,
+        'profile_picture': f'/static/uploads/profiles/{user.profile_picture}' if user.profile_picture else None
+    } for user in users]
+    
+    return jsonify({'success': True, 'users': users_data})
+
+
+@app.route('/api/theme', methods=['POST'])
+@login_required
+def save_theme():
+    """Save user theme preference"""
+    data = request.get_json()
+    theme = data.get('theme', 'light')
+    
+    if theme not in ['light', 'dark']:
+        return jsonify({'success': False, 'message': 'Invalid theme'}), 400
+    
+    current_user.theme_preference = theme
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+
+@app.route('/post/delete/<int:post_id>', methods=['POST'])
+@login_required
+def delete_post(post_id):
+    """Soft delete a post"""
+    post = Post.query.get_or_404(post_id)
+    
+    # Check permissions
+    if post.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+    
+    # Soft delete
+    post.deleted_at = datetime.utcnow()
+    db.session.commit()
+    
+    create_audit_log(
+        user_id=current_user.id,
+        action_type='post_deleted',
+        action_details={'post_id': post_id},
+        ip_address=request.remote_addr
+    )
+    
+    flash('Post deleted successfully.', 'success')
+    return redirect(request.referrer or url_for('user_dashboard'))
 
 
 # Error handlers
