@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Your Profile</h1>
+</div>
+
+<div class="content-grid">
+    <div class="content-section profile-info">
+        <div class="profile-header">
+            {% if current_user.profile_picture %}
+                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                     alt="{{ current_user.username }}" 
+                     class="profile-pic-large">
+            {% else %}
+                <div class="profile-pic-large profile-pic-default">
+                    {{ current_user.username[0].upper() }}
+                </div>
+            {% endif %}
+            <div class="profile-details">
+                <h2>{{ current_user.username }}</h2>
+                {% if current_user.team %}
+                    <p><strong>Team:</strong> {{ current_user.team.name }}</p>
+                {% else %}
+                    <p class="text-muted">Not assigned to a team</p>
+                {% endif %}
+                <p><strong>Member since:</strong> {{ current_user.created_at.strftime('%B %Y') }}</p>
+            </div>
+        </div>
+        
+        <h3>Update Profile Picture</h3>
+        <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data" class="form">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.profile_picture.label }}
+                <div class="file-upload-wrapper">
+                    {{ form.profile_picture(class="form-control-file", id="profilePicInput", accept="image/png,image/jpeg,image/jpg") }}
+                    <div id="profilePreview" class="image-preview"></div>
+                </div>
+                {% if form.profile_picture.errors %}
+                    <div class="form-error">
+                        {% for error in form.profile_picture.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-help">Accepted formats: PNG, JPG, JPEG</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="content-section">
+    <h2>Your Posts ({{ posts|length }})</h2>
+    <div class="timeline">
+        {% if posts %}
+            {% for post in posts %}
+            <div class="post-card">
+                <div class="post-header">
+                    <div class="post-author-info">
+                        <span class="post-time">{{ post.created_at|time_ago }}</span>
+                        {% if post.is_global %}
+                            <span class="badge badge-global">Global</span>
+                        {% else %}
+                            <span class="badge badge-team">Team Only</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="post-content">
+                    <p>{{ post.description }}</p>
+                    {% if post.image_path %}
+                        <div class="post-image">
+                            <img src="{{ url_for('static', filename='uploads/posts/' + post.image_path) }}" 
+                                 alt="Post image"
+                                 onclick="openImageModal(this.src)">
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <p>You haven't created any posts yet.</p>
+                <a href="{{ url_for('create_post') }}" class="btn btn-primary">Create Your First Post</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="modal" onclick="closeImageModal()">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('profilePicInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('profilePreview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview">';
+            preview.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        preview.innerHTML = '';
+        preview.style.display = 'none';
+    }
+});
+
+function openImageModal(src) {
+    document.getElementById('imageModal').style.display = 'block';
+    document.getElementById('modalImage').src = src;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
+</script>
+{% endblock %}

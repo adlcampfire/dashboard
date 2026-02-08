@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Teams - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Manage Teams</h1>
+</div>
+
+<div class="content-grid">
+    <div class="content-section">
+        <h2>Create New Team</h2>
+        <form method="POST" action="{{ url_for('admin_teams') }}" class="form">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.name.label }}
+                {{ form.name(class="form-control", placeholder="Enter team name") }}
+                {% if form.name.errors %}
+                    <div class="form-error">
+                        {% for error in form.name.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="content-section">
+    <h2>All Teams ({{ teams|length }})</h2>
+    <div class="teams-grid">
+        {% for team in teams %}
+        <div class="team-card">
+            <h3>{{ team.name }}</h3>
+            <div class="team-stats">
+                <p><strong>Members:</strong> {{ team.members|length }}</p>
+                <p><strong>Posts:</strong> {{ team.posts|length }}</p>
+                <p><strong>Created:</strong> {{ team.created_at.strftime('%Y-%m-%d') }}</p>
+            </div>
+            {% if team.members %}
+            <div class="team-members">
+                <strong>Team Members:</strong>
+                <ul>
+                    {% for member in team.members %}
+                    <li>{{ member.username }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

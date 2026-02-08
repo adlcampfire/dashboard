@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Registration Codes - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Manage Registration Codes</h1>
+</div>
+
+<div class="content-section">
+    <h2>Generate New Codes</h2>
+    <form method="POST" action="{{ url_for('admin_codes') }}" class="form form-inline">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.count.label }}
+            {{ form.count(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+
+<div class="content-section">
+    <h2>All Registration Codes ({{ codes|length }})</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Status</th>
+                    <th>Used By</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for code in codes %}
+                <tr>
+                    <td><strong>{{ code.code }}</strong></td>
+                    <td>
+                        {% if code.is_used %}
+                            <span class="badge badge-used">Used</span>
+                        {% else %}
+                            <span class="badge badge-available">Available</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if code.user %}
+                            {{ code.user.username }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ code.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if code.is_used %}
+                            <a href="{{ url_for('admin_reset_code', code_id=code.id) }}" 
+                               class="btn btn-sm btn-warning"
+                               onclick="return confirm('Reset this code?')">
+                                Reset
+                            </a>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
