@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Profile - Campfire Adelaide{% endblock %}
+{% block title %}Profile - {{ site_settings.site_name }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-header">
@@ -21,16 +21,44 @@
             {% endif %}
             <div class="profile-details">
                 <h2>{{ current_user.username }}</h2>
+                {% if current_user.is_admin %}<span class="badge admin">Admin</span>{% endif %}
+                {% if current_user.is_judge %}<span class="badge judge">Judge</span>{% endif %}
                 {% if current_user.team %}
                     <p><strong>Team:</strong> {{ current_user.team.name }}</p>
                 {% else %}
                     <p class="text-muted">Not assigned to a team</p>
                 {% endif %}
                 <p><strong>Member since:</strong> {{ current_user.created_at.strftime('%B %Y') }}</p>
+                
+                <!-- Social Links -->
+                {% if current_user.github_url or current_user.linkedin_url or current_user.twitter_url or current_user.portfolio_url %}
+                <div class="social-links">
+                    {% if current_user.github_url %}
+                    <a href="{{ current_user.github_url }}" target="_blank" title="GitHub">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    </a>
+                    {% endif %}
+                    {% if current_user.linkedin_url %}
+                    <a href="{{ current_user.linkedin_url }}" target="_blank" title="LinkedIn">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    </a>
+                    {% endif %}
+                    {% if current_user.twitter_url %}
+                    <a href="{{ current_user.twitter_url }}" target="_blank" title="Twitter">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                    </a>
+                    {% endif %}
+                    {% if current_user.portfolio_url %}
+                    <a href="{{ current_user.portfolio_url }}" target="_blank" title="Portfolio">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm1-11h4v2h-4v4h-2v-4H7v-2h4V7h2v4z"/></svg>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
         
-        <h3>Update Profile Picture</h3>
+        <h3>Update Profile</h3>
         <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data" class="form">
             {{ form.hidden_tag() }}
             
@@ -48,6 +76,47 @@
                 <small class="form-help">Accepted formats: PNG, JPG, JPEG</small>
             </div>
             
+            <h4>Social Links</h4>
+            <div class="form-group">
+                {{ form.github_url.label }}
+                {{ form.github_url(class="form-control", placeholder="https://github.com/username") }}
+                {% if form.github_url.errors %}
+                    <div class="form-error">
+                        {% for error in form.github_url.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.linkedin_url.label }}
+                {{ form.linkedin_url(class="form-control", placeholder="https://linkedin.com/in/username") }}
+                {% if form.linkedin_url.errors %}
+                    <div class="form-error">
+                        {% for error in form.linkedin_url.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.twitter_url.label }}
+                {{ form.twitter_url(class="form-control", placeholder="https://twitter.com/username") }}
+                {% if form.twitter_url.errors %}
+                    <div class="form-error">
+                        {% for error in form.twitter_url.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.portfolio_url.label }}
+                {{ form.portfolio_url(class="form-control", placeholder="https://yourportfolio.com") }}
+                {% if form.portfolio_url.errors %}
+                    <div class="form-error">
+                        {% for error in form.portfolio_url.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
             <div class="form-group">
                 {{ form.submit(class="btn btn-primary") }}
             </div>
@@ -60,29 +129,7 @@
     <div class="timeline">
         {% if posts %}
             {% for post in posts %}
-            <div class="post-card">
-                <div class="post-header">
-                    <div class="post-author-info">
-                        <span class="post-time">{{ post.created_at|time_ago }}</span>
-                        {% if post.is_global %}
-                            <span class="badge badge-global">Global</span>
-                        {% else %}
-                            <span class="badge badge-team">Team Only</span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="post-content">
-                    <p>{{ post.description }}</p>
-                    {% if post.image_path %}
-                        <div class="post-image">
-                            <img src="{{ url_for('static', filename='uploads/posts/' + post.image_path) }}" 
-                                 alt="Post image"
-                                 onclick="openImageModal(this.src)">
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+                {% include 'components/post_card.html' %}
             {% endfor %}
         {% else %}
             <div class="empty-state">
@@ -93,10 +140,10 @@
     </div>
 </div>
 
-<!-- Image Modal -->
-<div id="imageModal" class="modal" onclick="closeImageModal()">
-    <span class="modal-close">&times;</span>
-    <img class="modal-content" id="modalImage">
+<!-- Image Lightbox -->
+<div id="lightbox" class="lightbox" onclick="closeLightbox()" style="display: none;">
+    <span class="lightbox-close">&times;</span>
+    <img class="lightbox-content" id="lightbox-image">
 </div>
 {% endblock %}
 
@@ -119,13 +166,68 @@ document.getElementById('profilePicInput').addEventListener('change', function(e
     }
 });
 
-function openImageModal(src) {
-    document.getElementById('imageModal').style.display = 'block';
-    document.getElementById('modalImage').src = src;
+function openLightbox(src) {
+    document.getElementById('lightbox').style.display = 'flex';
+    document.getElementById('lightbox-image').src = src;
 }
 
-function closeImageModal() {
-    document.getElementById('imageModal').style.display = 'none';
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+}
+
+function reportPost(postId) {
+    if (confirm('Report this post as inappropriate?')) {
+        fetch('/api/report/post/' + postId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                reason: 'inappropriate',
+                details: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Report submitted successfully', 'success');
+            } else {
+                showToast('Failed to submit report', 'error');
+            }
+        });
+    }
 }
 </script>
+
+<style>
+.social-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.social-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-secondary, #f5f5f5);
+    transition: all 0.2s ease;
+}
+
+.social-links a:hover {
+    background: var(--primary-color, #FF6B35);
+}
+
+.social-links a svg {
+    fill: var(--text-primary, #333);
+}
+
+.social-links a:hover svg {
+    fill: white;
+}
+</style>
 {% endblock %}

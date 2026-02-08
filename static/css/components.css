@@ -497,3 +497,213 @@
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
 }
+
+/* Lightbox for Image Viewing */
+.lightbox {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.9);
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-content {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    animation: zoomIn 0.3s ease;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.lightbox-close:hover {
+    color: #bbb;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Post Card Styling Improvements */
+.post-card {
+    background: var(--bg-tertiary, white);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--card-shadow, 0 2px 8px rgba(0,0,0,0.1));
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.post-author-info {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.post-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.post-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color, #FF6B35), var(--secondary-color, #004E89));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.post-author {
+    font-weight: 600;
+    color: var(--text-primary, #333);
+    text-decoration: none;
+    font-size: 1.1rem;
+}
+
+.post-author:hover {
+    text-decoration: underline;
+}
+
+.post-meta {
+    font-size: 0.9rem;
+    color: var(--text-secondary, #666);
+}
+
+.post-time,
+.post-team,
+.post-global {
+    margin-right: 0.5rem;
+}
+
+.post-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.btn-icon:hover {
+    opacity: 1;
+}
+
+.post-content {
+    margin: 1rem 0;
+}
+
+.post-description {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-primary, #333);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.post-image {
+    margin-top: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.post-image img {
+    width: 100%;
+    max-height: 600px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.post-image img:hover {
+    transform: scale(1.02);
+}
+
+.post-media-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.post-media-gallery img,
+.post-media-gallery video {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.post-footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.comment-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color, #FF6B35), var(--secondary-color, #004E89));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-secondary, #f5f5f5);
+    border-radius: 12px;
+}
+
+.empty-state p {
+    font-size: 1.1rem;
+    color: var(--text-secondary, #666);
+    margin-bottom: 1.5rem;
+}

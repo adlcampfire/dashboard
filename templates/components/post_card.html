@@ -1,0 +1,134 @@
+<!-- Post Card Component with Reactions and Comments -->
+<div class="post-card" id="post-{{ post.id }}">
+    <div class="post-header">
+        <div class="post-author-info">
+            {% if post.user.profile_picture %}
+            <img src="{{ url_for('static', filename='uploads/profiles/' + post.user.profile_picture) }}" 
+                 alt="{{ post.user.username }}" class="post-avatar">
+            {% else %}
+            <div class="post-avatar-placeholder">{{ post.user.username[0].upper() }}</div>
+            {% endif %}
+            <div>
+                <a href="/user/{{ post.user.id }}" class="post-author">{{ post.user.username }}</a>
+                {% if post.user.is_admin %}<span class="badge admin">Admin</span>{% endif %}
+                {% if post.user.is_judge %}<span class="badge judge">Judge</span>{% endif %}
+                <div class="post-meta">
+                    <span class="post-time">{{ post.created_at | time_ago }}</span>
+                    {% if post.team %}
+                    <span class="post-team">• {{ post.team.name }}</span>
+                    {% endif %}
+                    {% if post.is_global %}
+                    <span class="post-global">• 🌍 Global</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="post-actions">
+            {% if current_user.id == post.user_id or current_user.is_admin %}
+            <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" 
+                  style="display: inline;" 
+                  onsubmit="return confirm('Are you sure you want to delete this post?');">
+                <button type="submit" class="btn-icon" title="Delete post">🗑️</button>
+            </form>
+            {% endif %}
+            <button class="report-flag" onclick="reportPost({{ post.id }})" title="Report post">🚩</button>
+        </div>
+    </div>
+    
+    <div class="post-content">
+        <p class="post-description">{{ post.description | safe }}</p>
+        
+        {% if post.image_path %}
+        <div class="post-image">
+            <img src="{{ url_for('static', filename='uploads/posts/' + post.image_path) }}" 
+                 alt="Post image" 
+                 onclick="openLightbox(this.src)">
+        </div>
+        {% endif %}
+        
+        {% if post.media %}
+        <div class="post-media-gallery">
+            {% for media in post.media | sort(attribute='display_order') %}
+                {% if media.media_type == 'image' %}
+                <img src="{{ url_for('static', filename='uploads/posts/' + media.file_path) }}" 
+                     alt="Post image" 
+                     onclick="openLightbox(this.src)">
+                {% elif media.media_type == 'video' %}
+                <video controls>
+                    <source src="{{ url_for('static', filename='uploads/videos/' + media.file_path) }}">
+                    Your browser does not support the video tag.
+                </video>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="post-footer">
+        <!-- Reactions -->
+        <div id="reactions-{{ post.id }}" class="reactions-container">
+            <div class="reaction-buttons">
+                {% set reaction_types = ['like', 'love', 'celebrate', 'idea', 'fire', 'applause'] %}
+                {% set reaction_emojis = {'like': '👍', 'love': '❤️', 'celebrate': '🎉', 'idea': '💡', 'fire': '🔥', 'applause': '👏'} %}
+                {% for rtype in reaction_types %}
+                    {% set reaction_count = post.reactions | selectattr('reaction_type', 'equalto', rtype) | list | length %}
+                    {% set user_reacted = post.reactions | selectattr('user_id', 'equalto', current_user.id) | selectattr('reaction_type', 'equalto', rtype) | list | length > 0 %}
+                    <button class="reaction-btn {% if user_reacted %}active{% endif %}" 
+                            onclick="toggleReaction({{ post.id }}, '{{ rtype }}')"
+                            title="{{ rtype }}">
+                        <span class="emoji">{{ reaction_emojis[rtype] }}</span>
+                        {% if reaction_count > 0 %}
+                        <span class="count">{{ reaction_count }}</span>
+                        {% endif %}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Comments Toggle -->
+        <div class="comments-toggle-section">
+            <button class="comments-toggle" onclick="toggleComments({{ post.id }})">
+                💬 Comments ({{ post.comments | selectattr('deleted', 'equalto', False) | list | length }})
+            </button>
+        </div>
+        
+        <!-- Comments Section (Hidden by default) -->
+        <div id="comments-section-{{ post.id }}" class="comments-section" style="display: none;">
+            <div id="comments-{{ post.id }}" class="comments-list">
+                {% for comment in post.comments | selectattr('deleted', 'equalto', False) | sort(attribute='created_at') %}
+                <div class="comment" id="comment-{{ comment.id }}">
+                    {% if comment.user.profile_picture %}
+                    <img src="{{ url_for('static', filename='uploads/profiles/' + comment.user.profile_picture) }}" 
+                         alt="{{ comment.user.username }}" class="comment-avatar">
+                    {% else %}
+                    <div class="comment-avatar-placeholder">{{ comment.user.username[0].upper() }}</div>
+                    {% endif %}
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <a href="/user/{{ comment.user.id }}" class="comment-author">{{ comment.user.username }}</a>
+                            <span class="comment-time">{{ comment.created_at | time_ago }}</span>
+                        </div>
+                        <div class="comment-text">{{ comment.content | safe }}</div>
+                    </div>
+                    {% if comment.user_id == current_user.id or current_user.is_admin %}
+                    <button class="comment-delete-btn" onclick="deleteComment({{ comment.id }})" title="Delete comment">
+                        🗑️
+                    </button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Comment Input -->
+            <div class="comment-input-container">
+                <textarea id="comment-input-{{ post.id }}" 
+                          class="comment-input mention-enabled" 
+                          placeholder="Write a comment... Use @ to mention users"
+                          rows="2"></textarea>
+                <button class="comment-submit-btn" onclick="submitComment({{ post.id }})">
+                    Post
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

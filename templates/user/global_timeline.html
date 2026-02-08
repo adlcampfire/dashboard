@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Global Timeline - Campfire Adelaide{% endblock %}
+{% block title %}Global Timeline - {{ site_settings.site_name }}{% endblock %}
 
 {% block content %}
 <div class="dashboard-header">
@@ -11,37 +11,7 @@
 <div class="timeline">
     {% if posts %}
         {% for post in posts %}
-        <div class="post-card">
-            <div class="post-header">
-                <div class="post-author">
-                    {% if post.user.profile_picture %}
-                        <img src="{{ url_for('static', filename='uploads/profiles/' + post.user.profile_picture) }}" 
-                             alt="{{ post.user.username }}" 
-                             class="profile-pic-small">
-                    {% else %}
-                        <div class="profile-pic-small profile-pic-default">
-                            {{ post.user.username[0].upper() }}
-                        </div>
-                    {% endif %}
-                    <div class="post-author-info">
-                        <strong>{{ post.user.username }}</strong>
-                        <span class="post-team">from {{ post.team.name }}</span>
-                        <span class="post-time">{{ post.created_at|time_ago }}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="post-content">
-                <p>{{ post.description }}</p>
-                {% if post.image_path %}
-                    <div class="post-image">
-                        <img src="{{ url_for('static', filename='uploads/posts/' + post.image_path) }}" 
-                             alt="Post image"
-                             onclick="openImageModal(this.src)">
-                    </div>
-                {% endif %}
-            </div>
-        </div>
+            {% include 'components/post_card.html' %}
         {% endfor %}
     {% else %}
         <div class="empty-state">
@@ -51,22 +21,46 @@
     {% endif %}
 </div>
 
-<!-- Image Modal -->
-<div id="imageModal" class="modal" onclick="closeImageModal()">
-    <span class="modal-close">&times;</span>
-    <img class="modal-content" id="modalImage">
+<!-- Image Lightbox -->
+<div id="lightbox" class="lightbox" onclick="closeLightbox()" style="display: none;">
+    <span class="lightbox-close">&times;</span>
+    <img class="lightbox-content" id="lightbox-image">
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function openImageModal(src) {
-    document.getElementById('imageModal').style.display = 'block';
-    document.getElementById('modalImage').src = src;
+function openLightbox(src) {
+    document.getElementById('lightbox').style.display = 'flex';
+    document.getElementById('lightbox-image').src = src;
 }
 
-function closeImageModal() {
-    document.getElementById('imageModal').style.display = 'none';
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+}
+
+function reportPost(postId) {
+    if (confirm('Report this post as inappropriate?')) {
+        fetch('/api/report/post/' + postId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                reason: 'inappropriate',
+                details: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Report submitted successfully', 'success');
+            } else {
+                showToast('Failed to submit report', 'error');
+            }
+        });
+    }
 }
 </script>
 {% endblock %}
