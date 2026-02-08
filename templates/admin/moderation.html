@@ -2,6 +2,10 @@
 
 {% block title %}Moderation Queue - Admin{% endblock %}
 
+{# Color mappings for badges #}
+{% set reason_colors = {'spam': 'yellow', 'inappropriate': 'orange', 'offensive': 'red', 'harassment': 'red', 'other': 'gray'} %}
+{% set status_colors = {'pending': 'blue', 'resolved': 'green', 'dismissed': 'gray'} %}
+
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
@@ -38,10 +42,10 @@
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <span class="text-xs bg-{{ {'spam': 'yellow', 'inappropriate': 'orange', 'offensive': 'red', 'harassment': 'red', 'other': 'gray'}[report.reason] }}-100 text-{{ {'spam': 'yellow', 'inappropriate': 'orange', 'offensive': 'red', 'harassment': 'red', 'other': 'gray'}[report.reason] }}-800 px-2 py-1 rounded capitalize">
+                            <span class="text-xs bg-{{ reason_colors[report.reason] }}-100 text-{{ reason_colors[report.reason] }}-800 px-2 py-1 rounded capitalize">
                                 {{ report.reason }}
                             </span>
-                            <span class="text-xs bg-{{ {'pending': 'blue', 'resolved': 'green', 'dismissed': 'gray'}[report.status] }}-100 text-{{ {'pending': 'blue', 'resolved': 'green', 'dismissed': 'gray'}[report.status] }}-800 px-2 py-1 rounded ml-2 capitalize">
+                            <span class="text-xs bg-{{ status_colors[report.status] }}-100 text-{{ status_colors[report.status] }}-800 px-2 py-1 rounded ml-2 capitalize">
                                 {{ report.status }}
                             </span>
                         </div>

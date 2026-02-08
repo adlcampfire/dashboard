@@ -21,6 +21,11 @@ from utils import (parse_mentions, highlight_mentions, sanitize_html, validate_u
                    create_audit_log, format_time_ago)
 from decorators import rate_limit, audit_log, judge_required
 
+# File upload constants
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov'}
+MAX_IMAGES_PER_POST = 10
+
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -62,41 +67,46 @@ def admin_required(f):
 
 
 def allowed_file(filename):
-    """Check if file extension is allowed"""
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    """Check if file extension is allowed for images"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 
-def save_upload(file, folder):
-    """Save uploaded file and return the filename"""
-    if file and allowed_file(file.filename):
-        # Generate unique filename
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
-        file.save(filepath)
-        return filename
-    return None
-
-
-def save_upload_large(file, folder):
-    """Save large uploaded file (video) and return the filename"""
-    if file and file.filename:
-        # Generate unique filename
-        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-        filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
-        file.save(filepath)
-        return filename
-    return None
+def save_upload(file, folder, allowed_extensions=None):
+    """
+    Save uploaded file and return the filename
+    
+    Args:
+        file: The file object to save
+        folder: Subfolder within UPLOAD_FOLDER
+        allowed_extensions: Set of allowed file extensions (defaults to ALLOWED_IMAGE_EXTENSIONS)
+    
+    Returns:
+        str: The filename if successful, None otherwise
+    """
+    if not file or not file.filename:
+        return None
+    
+    # Use default image extensions if not specified
+    if allowed_extensions is None:
+        allowed_extensions = ALLOWED_IMAGE_EXTENSIONS
+    
+    # Check if file extension is allowed
+    if '.' not in file.filename:
+        return None
+    
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    if ext not in allowed_extensions:
+        return None
+    
+    # Generate unique filename
+    filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{ext}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
+    
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    file.save(filepath)
+    return filename
 
 
 def time_ago(dt):
@@ -476,12 +486,12 @@ def create_post():
         db.session.add(post)
         db.session.flush()  # Get post ID
         
-        # Handle multiple images (up to 10)
+        # Handle multiple images (up to MAX_IMAGES_PER_POST)
         if form.images.data:
             image_count = 0
             for image_file in form.images.data:
-                if image_count >= 10:
-                    flash('Maximum 10 images allowed per post.', 'warning')
+                if image_count >= MAX_IMAGES_PER_POST:
+                    flash(f'Maximum {MAX_IMAGES_PER_POST} images allowed per post.', 'warning')
                     break
                 
                 if image_file and allowed_file(image_file.filename):
@@ -498,19 +508,15 @@ def create_post():
         
         # Handle video upload (only if no images)
         elif form.video.data:
-            ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov'}
-            video_file = form.video.data
-            if video_file and '.' in video_file.filename and \
-               video_file.filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS:
-                filename = save_upload_large(video_file, 'videos')
-                if filename:
-                    media = PostMedia(
-                        post_id=post.id,
-                        media_type='video',
-                        file_path=filename,
-                        display_order=0
-                    )
-                    db.session.add(media)
+            filename = save_upload(form.video.data, 'videos', allowed_extensions=ALLOWED_VIDEO_EXTENSIONS)
+            if filename:
+                media = PostMedia(
+                    post_id=post.id,
+                    media_type='video',
+                    file_path=filename,
+                    display_order=0
+                )
+                db.session.add(media)
         
         # Legacy single image support
         elif form.image.data:
