@@ -40,14 +40,20 @@
                 <li><a href="{{ url_for('admin_users') }}">Users</a></li>
                 <li><a href="{{ url_for('admin_teams') }}">Teams</a></li>
                 <li><a href="{{ url_for('admin_codes') }}">Codes</a></li>
+                <li><a href="{{ url_for('admin_announcements') }}">Announcements</a></li>
+                <li><a href="{{ url_for('admin_moderation') }}">Moderation</a></li>
+                <li><a href="{{ url_for('admin_results') }}">Results</a></li>
                 {% elif current_user.is_judge %}
                 <li><a href="{{ url_for('user_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('judge_teams') }}">Vote</a></li>
                 <li><a href="{{ url_for('global_timeline') }}">Timeline</a></li>
+                <li><a href="{{ url_for('view_announcements') }}">Announcements</a></li>
                 {% else %}
                 <li><a href="{{ url_for('user_dashboard') }}">Dashboard</a></li>
                 <li><a href="{{ url_for('team_timeline') }}">Team Timeline</a></li>
                 <li><a href="{{ url_for('global_timeline') }}">Global Timeline</a></li>
                 <li><a href="{{ url_for('create_post') }}">Create Post</a></li>
+                <li><a href="{{ url_for('view_announcements') }}">Announcements</a></li>
                 <li><a href="{{ url_for('profile') }}">Profile</a></li>
                 {% endif %}
                 <li class="user-info">

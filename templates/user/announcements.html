@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">Announcements</h1>
+
+    {% if announcements %}
+        <div class="space-y-4">
+            {% for announcement in announcements %}
+                <div class="rounded-lg shadow-md p-6 {% if announcement.announcement_type == 'info' %}bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500{% elif announcement.announcement_type == 'warning' %}bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500{% elif announcement.announcement_type == 'success' %}bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500{% elif announcement.announcement_type == 'important' %}bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500{% endif %}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h2 class="text-2xl font-semibold flex items-center gap-2">
+                            {{ announcement.title }}
+                            {% if announcement.is_pinned %}
+                                <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                                    <i class="fas fa-thumbtack"></i> Pinned
+                                </span>
+                            {% endif %}
+                        </h2>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ announcement.created_at.strftime('%b %d, %Y') }}
+                        </span>
+                    </div>
+                    
+                    <div class="prose dark:prose-invert max-w-none">
+                        {{ announcement.content|safe }}
+                    </div>
+                    
+                    {% if announcement.expires_at %}
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-4">
+                            <i class="fas fa-clock"></i> Expires on {{ announcement.expires_at.strftime('%b %d, %Y at %H:%M') }}
+                        </p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
+            <p class="text-gray-600 dark:text-gray-400">No announcements at this time.</p>
+        </div>
+    {% endif %}
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}

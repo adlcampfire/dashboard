@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Judge Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">Judge Dashboard - Team Voting</h1>
+
+    <div class="mb-6 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 p-4 rounded">
+        <p class="text-blue-800 dark:text-blue-200">
+            <i class="fas fa-info-circle"></i> Review each team's submissions and cast your vote. You can vote for each team once. Votes cannot be changed after submission.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for data in teams_data %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden {% if data.voted %}ring-2 ring-green-500{% endif %}">
+                {% if data.team.avatar_path %}
+                    <img src="/static/uploads/team_avatars/{{ data.team.avatar_path }}" alt="{{ data.team.name }}" class="w-full h-48 object-cover">
+                {% else %}
+                    <div class="w-full h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                        <span class="text-6xl font-bold text-white">{{ data.team.name[0] }}</span>
+                    </div>
+                {% endif %}
+                
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold mb-2">{{ data.team.name }}</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        {{ data.team.members|length }} member{{ 's' if data.team.members|length != 1 else '' }}
+                    </p>
+                    
+                    {% if data.voted %}
+                        <div class="mb-4 bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 p-3 rounded">
+                            <p class="text-green-800 dark:text-green-200 text-sm">
+                                <i class="fas fa-check-circle"></i> Voted
+                            </p>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                Total Score: {{ "%.2f"|format(data.vote.calculate_total_score()) }}/100
+                            </p>
+                        </div>
+                    {% else %}
+                        <div class="mb-4 bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 p-3 rounded">
+                            <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+                                <i class="fas fa-exclamation-circle"></i> Not Voted
+                            </p>
+                        </div>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('judge_vote', team_id=data.team.id) }}" class="btn btn-primary w-full">
+                        {% if data.voted %}View Submission{% else %}Vote Now{% endif %}
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}

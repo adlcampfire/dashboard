@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Moderation Queue - Admin{% endblock %}
+
+{# Color mappings for badges #}
+{% set reason_colors = {'spam': 'yellow', 'inappropriate': 'orange', 'offensive': 'red', 'harassment': 'red', 'other': 'gray'} %}
+{% set status_colors = {'pending': 'blue', 'resolved': 'green', 'dismissed': 'gray'} %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Content Moderation</h1>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div class="flex gap-2">
+            <a href="{{ url_for('admin_moderation', status='pending') }}" 
+               class="px-4 py-2 rounded {% if current_status == 'pending' %}bg-blue-500 text-white{% else %}bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300{% endif %}">
+                Pending
+            </a>
+            <a href="{{ url_for('admin_moderation', status='resolved') }}" 
+               class="px-4 py-2 rounded {% if current_status == 'resolved' %}bg-blue-500 text-white{% else %}bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300{% endif %}">
+                Resolved
+            </a>
+            <a href="{{ url_for('admin_moderation', status='dismissed') }}" 
+               class="px-4 py-2 rounded {% if current_status == 'dismissed' %}bg-blue-500 text-white{% else %}bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300{% endif %}">
+                Dismissed
+            </a>
+            <a href="{{ url_for('admin_moderation', status='all') }}" 
+               class="px-4 py-2 rounded {% if current_status == 'all' %}bg-blue-500 text-white{% else %}bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300{% endif %}">
+                All
+            </a>
+        </div>
+    </div>
+
+    <!-- Reports List -->
+    <div class="space-y-4">
+        {% if reports %}
+            {% for report in reports %}
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <span class="text-xs bg-{{ reason_colors[report.reason] }}-100 text-{{ reason_colors[report.reason] }}-800 px-2 py-1 rounded capitalize">
+                                {{ report.reason }}
+                            </span>
+                            <span class="text-xs bg-{{ status_colors[report.status] }}-100 text-{{ status_colors[report.status] }}-800 px-2 py-1 rounded ml-2 capitalize">
+                                {{ report.status }}
+                            </span>
+                        </div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ report.created_at|time_ago }}
+                        </span>
+                    </div>
+
+                    {% if report.post %}
+                        <div class="border-l-4 border-blue-500 pl-4 mb-4">
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Reported Post by @{{ report.post.user.username }}</p>
+                            <p class="text-gray-800 dark:text-gray-200">{{ report.post.description[:200] }}{% if report.post.description|length > 200 %}...{% endif %}</p>
+                        </div>
+                    {% elif report.comment %}
+                        <div class="border-l-4 border-green-500 pl-4 mb-4">
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Reported Comment by @{{ report.comment.user.username }}</p>
+                            <p class="text-gray-800 dark:text-gray-200">{{ report.comment.content[:200] }}{% if report.comment.content|length > 200 %}...{% endif %}</p>
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Reported by: @{{ report.reporter.username }}</p>
+                        {% if report.details %}
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mt-2">Details: {{ report.details }}</p>
+                        {% endif %}
+                    </div>
+
+                    {% if report.status == 'pending' %}
+                        <div class="flex gap-2">
+                            <form method="POST" action="{{ url_for('admin_moderation_action', report_id=report.id) }}" class="inline">
+                                <input type="hidden" name="action" value="hide">
+                                <button type="submit" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                                    Hide Content
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('admin_moderation_action', report_id=report.id) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this content?');">
+                                <input type="hidden" name="action" value="delete">
+                                <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+                                    Delete Content
+                                </button>
+                            </form>
+                            
+                            <button onclick="showBanModal({{ report.id }})" class="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800">
+                                Ban User
+                            </button>
+                            
+                            <form method="POST" action="{{ url_for('admin_moderation_action', report_id=report.id) }}" class="inline">
+                                <input type="hidden" name="action" value="dismiss">
+                                <button type="submit" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                                    Dismiss
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
+                <p class="text-gray-600 dark:text-gray-400">No reports to display.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Ban Modal -->
+<div id="banModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+        <h3 class="text-xl font-semibold mb-4">Ban User</h3>
+        <form id="banForm" method="POST">
+            <input type="hidden" name="action" value="ban">
+            <div class="mb-4">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2">Ban Duration (days)</label>
+                <input type="number" name="ban_duration" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="0 for permanent" value="0">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2">Reason</label>
+                <textarea name="reason" rows="3" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></textarea>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+                    Ban User
+                </button>
+                <button type="button" onclick="hideBanModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showBanModal(reportId) {
+    document.getElementById('banModal').classList.remove('hidden');
+    document.getElementById('banForm').action = `/admin/moderation/${reportId}`;
+}
+
+function hideBanModal() {
+    document.getElementById('banModal').classList.add('hidden');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Site Settings - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Site Branding & Settings</h1>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <form method="POST" action="{{ url_for('admin_settings') }}" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.site_name.label }}</label>
+                {{ form.site_name(class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white") }}
+                {% if form.site_name.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.site_name.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.logo.label }}</label>
+                    {{ form.logo(class="w-full") }}
+                    {% if settings.logo_path %}
+                        <div class="mt-2">
+                            <img src="/static/uploads/branding/{{ settings.logo_path }}" alt="Current Logo" class="max-h-20">
+                        </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.favicon.label }}</label>
+                    {{ form.favicon(class="w-full") }}
+                    {% if settings.favicon_path %}
+                        <div class="mt-2">
+                            <img src="/static/uploads/branding/{{ settings.favicon_path }}" alt="Current Favicon" class="max-h-10">
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.primary_color.label }}</label>
+                    <div class="flex gap-2">
+                        {{ form.primary_color(class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white") }}
+                        <input type="color" value="{{ settings.primary_color }}" class="h-10 w-20 border rounded-lg">
+                    </div>
+                    {% if form.primary_color.errors %}
+                        <p class="text-red-500 text-sm mt-1">{{ form.primary_color.errors[0] }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.secondary_color.label }}</label>
+                    <div class="flex gap-2">
+                        {{ form.secondary_color(class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white") }}
+                        <input type="color" value="{{ settings.secondary_color }}" class="h-10 w-20 border rounded-lg">
+                    </div>
+                    {% if form.secondary_color.errors %}
+                        <p class="text-red-500 text-sm mt-1">{{ form.secondary_color.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.font_family.label }}</label>
+                {{ form.font_family(class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white") }}
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Examples: Inter, Roboto, Open Sans, etc.</p>
+                {% if form.font_family.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.font_family.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.custom_css.label }}</label>
+                {{ form.custom_css(class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-sm", rows="10") }}
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Add custom CSS to override default styles.</p>
+                {% if form.custom_css.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.custom_css.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            {{ form.submit(class="btn btn-primary") }}
+        </form>
+    </div>
+</div>
+{% endblock %}

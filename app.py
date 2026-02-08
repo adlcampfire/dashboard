@@ -21,6 +21,11 @@ from utils import (parse_mentions, highlight_mentions, sanitize_html, validate_u
                    create_audit_log, format_time_ago)
 from decorators import rate_limit, audit_log, judge_required
 
+# File upload constants
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov'}
+MAX_IMAGES_PER_POST = 10
+
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -62,21 +67,46 @@ def admin_required(f):
 
 
 def allowed_file(filename):
-    """Check if file extension is allowed"""
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    """Check if file extension is allowed for images"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 
-def save_upload(file, folder):
-    """Save uploaded file and return the filename"""
-    if file and allowed_file(file.filename):
-        # Generate unique filename
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
-        file.save(filepath)
-        return filename
-    return None
+def save_upload(file, folder, allowed_extensions=None):
+    """
+    Save uploaded file and return the filename
+    
+    Args:
+        file: The file object to save
+        folder: Subfolder within UPLOAD_FOLDER
+        allowed_extensions: Set of allowed file extensions (defaults to ALLOWED_IMAGE_EXTENSIONS)
+    
+    Returns:
+        str: The filename if successful, None otherwise
+    """
+    if not file or not file.filename:
+        return None
+    
+    # Use default image extensions if not specified
+    if allowed_extensions is None:
+        allowed_extensions = ALLOWED_IMAGE_EXTENSIONS
+    
+    # Check if file extension is allowed
+    if '.' not in file.filename:
+        return None
+    
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    if ext not in allowed_extensions:
+        return None
+    
+    # Generate unique filename
+    filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{ext}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
+    
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    file.save(filepath)
+    return filename
 
 
 def time_ago(dt):
@@ -436,8 +466,9 @@ def global_timeline():
 
 @app.route('/post/create', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("10 per hour")
 def create_post():
-    """Create a new post"""
+    """Create a new post with multi-media support"""
     if not current_user.team_id:
         flash('You must be assigned to a team to create posts.', 'warning')
         return redirect(url_for('user_dashboard'))
@@ -445,19 +476,61 @@ def create_post():
     form = PostForm()
     
     if form.validate_on_submit():
-        image_filename = None
-        if form.image.data:
-            image_filename = save_upload(form.image.data, 'posts')
-        
+        # Create post
         post = Post(
             user_id=current_user.id,
             team_id=current_user.team_id,
             description=form.description.data,
-            image_path=image_filename,
             is_global=form.is_global.data
         )
         db.session.add(post)
+        db.session.flush()  # Get post ID
+        
+        # Handle multiple images (up to MAX_IMAGES_PER_POST)
+        if form.images.data:
+            image_count = 0
+            for image_file in form.images.data:
+                if image_count >= MAX_IMAGES_PER_POST:
+                    flash(f'Maximum {MAX_IMAGES_PER_POST} images allowed per post.', 'warning')
+                    break
+                
+                if image_file and allowed_file(image_file.filename):
+                    filename = save_upload(image_file, 'posts')
+                    if filename:
+                        media = PostMedia(
+                            post_id=post.id,
+                            media_type='image',
+                            file_path=filename,
+                            display_order=image_count
+                        )
+                        db.session.add(media)
+                        image_count += 1
+        
+        # Handle video upload (only if no images)
+        elif form.video.data:
+            filename = save_upload(form.video.data, 'videos', allowed_extensions=ALLOWED_VIDEO_EXTENSIONS)
+            if filename:
+                media = PostMedia(
+                    post_id=post.id,
+                    media_type='video',
+                    file_path=filename,
+                    display_order=0
+                )
+                db.session.add(media)
+        
+        # Legacy single image support
+        elif form.image.data:
+            image_filename = save_upload(form.image.data, 'posts')
+            post.image_path = image_filename
+        
         db.session.commit()
+        
+        create_audit_log(
+            user_id=current_user.id,
+            action_type='post_created',
+            action_details={'post_id': post.id},
+            ip_address=request.remote_addr
+        )
         
         flash('Post created successfully!', 'success')
         
@@ -680,6 +753,428 @@ def delete_post(post_id):
     
     flash('Post deleted successfully.', 'success')
     return redirect(request.referrer or url_for('user_dashboard'))
+
+
+# Announcements routes
+@app.route('/admin/announcements', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_announcements():
+    """Manage announcements"""
+    form = AnnouncementForm()
+    
+    if form.validate_on_submit():
+        announcement = Announcement(
+            title=form.title.data,
+            content=form.content.data,
+            announcement_type=form.announcement_type.data,
+            is_pinned=form.is_pinned.data,
+            expires_at=form.expires_at.data,
+            created_by_admin_id=current_user.id
+        )
+        db.session.add(announcement)
+        db.session.commit()
+        
+        create_audit_log(
+            user_id=current_user.id,
+            action_type='announcement_created',
+            action_details={'title': announcement.title},
+            ip_address=request.remote_addr
+        )
+        
+        flash('Announcement created successfully!', 'success')
+        return redirect(url_for('admin_announcements'))
+    
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    return render_template('admin/announcements.html', form=form, announcements=announcements)
+
+
+@app.route('/announcements')
+@login_required
+def view_announcements():
+    """View all announcements"""
+    announcements = Announcement.query.filter(
+        (Announcement.expires_at == None) | (Announcement.expires_at > datetime.utcnow())
+    ).order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc()).all()
+    return render_template('user/announcements.html', announcements=announcements)
+
+
+# Judge voting routes
+@app.route('/judge/teams')
+@login_required
+@judge_required
+def judge_teams():
+    """Judge dashboard - view all teams"""
+    teams = Team.query.all()
+    
+    # Get voting status for each team
+    teams_data = []
+    for team in teams:
+        existing_vote = Vote.query.filter_by(
+            judge_id=current_user.id,
+            team_id=team.id
+        ).first()
+        teams_data.append({
+            'team': team,
+            'voted': existing_vote is not None,
+            'vote': existing_vote
+        })
+    
+    return render_template('judge/teams.html', teams_data=teams_data)
+
+
+@app.route('/judge/vote/<int:team_id>', methods=['GET', 'POST'])
+@login_required
+@judge_required
+def judge_vote(team_id):
+    """Submit or view vote for a team"""
+    team = Team.query.get_or_404(team_id)
+    
+    # Check if already voted
+    existing_vote = Vote.query.filter_by(
+        judge_id=current_user.id,
+        team_id=team_id
+    ).first()
+    
+    form = VoteForm()
+    
+    if form.validate_on_submit():
+        if existing_vote:
+            flash('You have already voted for this team.', 'warning')
+            return redirect(url_for('judge_teams'))
+        
+        vote = Vote(
+            judge_id=current_user.id,
+            team_id=team_id,
+            innovation_score=form.innovation_score.data,
+            implementation_score=form.implementation_score.data,
+            design_score=form.design_score.data,
+            presentation_score=form.presentation_score.data,
+            comments=form.comments.data
+        )
+        db.session.add(vote)
+        db.session.commit()
+        
+        create_audit_log(
+            user_id=current_user.id,
+            action_type='vote_submitted',
+            action_details={'team_id': team_id},
+            ip_address=request.remote_addr
+        )
+        
+        flash('Vote submitted successfully!', 'success')
+        return redirect(url_for('judge_teams'))
+    
+    # Get team posts for reference
+    posts = Post.query.filter_by(team_id=team_id, deleted_at=None).order_by(Post.created_at.desc()).all()
+    
+    return render_template('judge/vote.html', team=team, form=form, existing_vote=existing_vote, posts=posts)
+
+
+@app.route('/admin/results')
+@login_required
+@admin_required
+def admin_results():
+    """View voting results"""
+    teams = Team.query.all()
+    
+    results = []
+    for team in teams:
+        votes = Vote.query.filter_by(team_id=team.id).all()
+        if votes:
+            total_score = sum(vote.calculate_total_score() for vote in votes) / len(votes)
+        else:
+            total_score = 0
+        
+        results.append({
+            'team': team,
+            'votes': votes,
+            'average_score': total_score,
+            'vote_count': len(votes)
+        })
+    
+    # Sort by average score
+    results.sort(key=lambda x: x['average_score'], reverse=True)
+    
+    return render_template('admin/results.html', results=results)
+
+
+@app.route('/admin/results/export')
+@login_required
+@admin_required
+def admin_results_export():
+    """Export results as CSV"""
+    import csv
+    from io import StringIO
+    from flask import make_response
+    
+    teams = Team.query.all()
+    
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Team', 'Judge', 'Innovation', 'Implementation', 'Design', 'Presentation', 'Total Score', 'Comments'])
+    
+    for team in teams:
+        votes = Vote.query.filter_by(team_id=team.id).all()
+        for vote in votes:
+            writer.writerow([
+                team.name,
+                vote.judge.username,
+                vote.innovation_score,
+                vote.implementation_score,
+                vote.design_score,
+                vote.presentation_score,
+                vote.calculate_total_score(),
+                vote.comments or ''
+            ])
+    
+    # Create response
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename=voting_results_{datetime.utcnow().strftime("%Y%m%d")}.csv'
+    response.headers['Content-Type'] = 'text/csv'
+    
+    return response
+
+
+# Content moderation routes
+@app.route('/api/report/<string:content_type>/<int:content_id>', methods=['POST'])
+@login_required
+def report_content(content_type, content_id):
+    """Report a post or comment"""
+    data = request.get_json()
+    reason = data.get('reason')
+    details = data.get('details', '')
+    
+    if content_type not in ['post', 'comment']:
+        return jsonify({'success': False, 'message': 'Invalid content type'}), 400
+    
+    if not reason or reason not in ['spam', 'inappropriate', 'offensive', 'harassment', 'other']:
+        return jsonify({'success': False, 'message': 'Invalid reason'}), 400
+    
+    # Create report
+    report = Report(
+        post_id=content_id if content_type == 'post' else None,
+        comment_id=content_id if content_type == 'comment' else None,
+        reported_by_user_id=current_user.id,
+        reason=reason,
+        details=details
+    )
+    db.session.add(report)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Report submitted successfully'})
+
+
+@app.route('/admin/moderation')
+@login_required
+@admin_required
+def admin_moderation():
+    """Moderation queue"""
+    status = request.args.get('status', 'pending')
+    
+    query = Report.query
+    if status != 'all':
+        query = query.filter_by(status=status)
+    
+    reports = query.order_by(Report.created_at.desc()).all()
+    
+    return render_template('admin/moderation.html', reports=reports, current_status=status)
+
+
+@app.route('/admin/moderation/<int:report_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_moderation_action(report_id):
+    """Take action on a report"""
+    report = Report.query.get_or_404(report_id)
+    action = request.form.get('action')
+    reason = request.form.get('reason', '')
+    
+    if action == 'hide':
+        # Hide the content
+        if report.post_id:
+            post = Post.query.get(report.post_id)
+            post.is_hidden = True
+        elif report.comment_id:
+            comment = Comment.query.get(report.comment_id)
+            comment.deleted = True
+        
+        report.status = 'resolved'
+        flash('Content hidden successfully.', 'success')
+    
+    elif action == 'delete':
+        # Soft delete the content
+        if report.post_id:
+            post = Post.query.get(report.post_id)
+            post.deleted_at = datetime.utcnow()
+        elif report.comment_id:
+            comment = Comment.query.get(report.comment_id)
+            comment.deleted = True
+        
+        report.status = 'resolved'
+        flash('Content deleted successfully.', 'success')
+    
+    elif action == 'ban':
+        # Ban the user
+        ban_duration = int(request.form.get('ban_duration', 0))
+        
+        if report.post_id:
+            post = Post.query.get(report.post_id)
+            user_to_ban = post.user
+        elif report.comment_id:
+            comment = Comment.query.get(report.comment_id)
+            user_to_ban = comment.user
+        
+        user_to_ban.is_banned = True
+        user_to_ban.ban_reason = reason
+        if ban_duration > 0:
+            user_to_ban.banned_until = datetime.utcnow() + timedelta(days=ban_duration)
+        
+        report.status = 'resolved'
+        flash(f'User banned successfully.', 'success')
+    
+    elif action == 'dismiss':
+        report.status = 'dismissed'
+        flash('Report dismissed.', 'info')
+    
+    db.session.commit()
+    
+    create_audit_log(
+        user_id=current_user.id,
+        action_type='moderation_action',
+        action_details={'report_id': report_id, 'action': action},
+        ip_address=request.remote_addr
+    )
+    
+    return redirect(url_for('admin_moderation'))
+
+
+# Audit log routes
+@app.route('/admin/audit-logs')
+@login_required
+@admin_required
+def admin_audit_logs():
+    """View audit logs"""
+    page = request.args.get('page', 1, type=int)
+    action_type = request.args.get('action_type', '')
+    user_id = request.args.get('user_id', type=int)
+    
+    query = AuditLog.query
+    
+    if action_type:
+        query = query.filter_by(action_type=action_type)
+    
+    if user_id:
+        query = query.filter_by(user_id=user_id)
+    
+    logs = query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=50, error_out=False)
+    
+    # Get unique action types for filter
+    action_types = db.session.query(AuditLog.action_type).distinct().all()
+    action_types = [at[0] for at in action_types]
+    
+    return render_template('admin/audit_logs.html', logs=logs, action_types=action_types)
+
+
+@app.route('/admin/audit-logs/export')
+@login_required
+@admin_required
+def admin_audit_logs_export():
+    """Export audit logs as CSV"""
+    import csv
+    from io import StringIO
+    from flask import make_response
+    
+    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).all()
+    
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Timestamp', 'User', 'Action Type', 'Details', 'IP Address'])
+    
+    for log in logs:
+        username = log.user.username if log.user else 'System'
+        writer.writerow([
+            log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            username,
+            log.action_type,
+            log.action_details or '',
+            log.ip_address or ''
+        ])
+    
+    # Create response
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename=audit_logs_{datetime.utcnow().strftime("%Y%m%d")}.csv'
+    response.headers['Content-Type'] = 'text/csv'
+    
+    return response
+
+
+# Team avatar routes
+@app.route('/admin/team/<int:team_id>/avatar', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_team_avatar(team_id):
+    """Upload team avatar"""
+    team = Team.query.get_or_404(team_id)
+    form = TeamAvatarForm()
+    
+    if form.validate_on_submit():
+        filename = save_upload(form.avatar.data, 'team_avatars')
+        if filename:
+            team.avatar_path = filename
+            db.session.commit()
+            flash('Team avatar uploaded successfully!', 'success')
+            return redirect(url_for('admin_teams'))
+        else:
+            flash('Failed to upload avatar.', 'error')
+    
+    return render_template('admin/team_avatar.html', team=team, form=form)
+
+
+# Site settings routes
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_settings():
+    """Site branding settings"""
+    settings = get_site_settings()
+    form = BrandingForm(obj=settings)
+    
+    if form.validate_on_submit():
+        settings.site_name = form.site_name.data
+        settings.primary_color = form.primary_color.data
+        settings.secondary_color = form.secondary_color.data
+        settings.font_family = form.font_family.data
+        settings.custom_css = form.custom_css.data
+        settings.updated_by_admin_id = current_user.id
+        
+        # Handle logo upload
+        if form.logo.data:
+            filename = save_upload(form.logo.data, 'branding')
+            if filename:
+                settings.logo_path = filename
+        
+        # Handle favicon upload
+        if form.favicon.data:
+            filename = save_upload(form.favicon.data, 'branding')
+            if filename:
+                settings.favicon_path = filename
+        
+        db.session.commit()
+        
+        create_audit_log(
+            user_id=current_user.id,
+            action_type='settings_updated',
+            action_details={'site_name': settings.site_name},
+            ip_address=request.remote_addr
+        )
+        
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('admin_settings'))
+    
+    return render_template('admin/settings.html', form=form, settings=settings)
 
 
 # Error handlers
