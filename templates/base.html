@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="{{ current_user.theme_preference if current_user.is_authenticated else 'light' }}">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ site_settings.site_name }}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-mode.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     {% if site_settings.favicon_path %}
     <link rel="icon" href="{{ url_for('static', filename='uploads/branding/' + site_settings.favicon_path) }}">
@@ -51,11 +50,6 @@
                 <li><a href="{{ url_for('create_post') }}">Create Post</a></li>
                 <li><a href="{{ url_for('profile') }}">Profile</a></li>
                 {% endif %}
-                <li>
-                    <button class="theme-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
-                        <span id="theme-toggle-icon">🌙</span>
-                    </button>
-                </li>
                 <li class="user-info">
                     <span class="username">{{ current_user.username }}</span>
                     {% if current_user.is_admin %}<span class="badge admin">Admin</span>{% endif %}
@@ -105,7 +99,6 @@
 
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dark-mode.js') }}"></script>
     <script src="{{ url_for('static', filename='js/reactions.js') }}"></script>
     <script src="{{ url_for('static', filename='js/comments.js') }}"></script>
     <script src="{{ url_for('static', filename='js/mentions.js') }}"></script>
