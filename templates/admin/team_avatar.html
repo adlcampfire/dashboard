@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Team Avatar - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Upload Team Avatar for {{ team.name }}</h1>
+        <a href="{{ url_for('admin_teams') }}" class="btn btn-secondary">Back to Teams</a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        {% if team.avatar_path %}
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-2">Current Avatar</h3>
+                <img src="/static/uploads/team_avatars/{{ team.avatar_path }}" alt="{{ team.name }} avatar" class="max-h-40 rounded-lg shadow">
+            </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('admin_team_avatar', team_id=team.id) }}" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 font-semibold">{{ form.avatar.label }}</label>
+                {{ form.avatar(class="w-full") }}
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Accepted formats: PNG, JPG, JPEG (max 5MB)</p>
+                {% if form.avatar.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.avatar.errors[0] }}</p>
+                {% endif %}
+            </div>
+
+            {{ form.submit(class="btn btn-primary") }}
+        </form>
+    </div>
+</div>
+{% endblock %}

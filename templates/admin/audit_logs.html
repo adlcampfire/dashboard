@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Logs - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Audit Logs</h1>
+        <div class="flex gap-2">
+            <a href="{{ url_for('admin_audit_logs_export') }}" class="btn btn-success">
+                <i class="fas fa-download"></i> Export CSV
+            </a>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <form method="GET" action="{{ url_for('admin_audit_logs') }}" class="flex gap-4 items-end">
+            <div class="flex-1">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 text-sm">Action Type</label>
+                <select name="action_type" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">All Actions</option>
+                    {% for action_type in action_types %}
+                        <option value="{{ action_type }}" {% if request.args.get('action_type') == action_type %}selected{% endif %}>{{ action_type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 text-sm">User ID</label>
+                <input type="number" name="user_id" value="{{ request.args.get('user_id', '') }}" placeholder="Filter by user ID" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Timestamp</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Action</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Details</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for log in logs.items %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                {% if log.user %}
+                                    @{{ log.user.username }}
+                                {% else %}
+                                    <span class="text-gray-500 italic">System</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                    {{ log.action_type }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-md truncate">
+                                {{ log.action_details or '-' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                {{ log.ip_address or '-' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if logs.pages > 1 %}
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-between items-center">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                    Page {{ logs.page }} of {{ logs.pages }}
+                </div>
+                <div class="flex gap-2">
+                    {% if logs.has_prev %}
+                        <a href="{{ url_for('admin_audit_logs', page=logs.prev_num, action_type=request.args.get('action_type', ''), user_id=request.args.get('user_id', '')) }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Previous</a>
+                    {% endif %}
+                    {% if logs.has_next %}
+                        <a href="{{ url_for('admin_audit_logs', page=logs.next_num, action_type=request.args.get('action_type', ''), user_id=request.args.get('user_id', '')) }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
