@@ -542,19 +542,19 @@ def add_comment(post_id):
     if len(content) > 1000:
         return jsonify({'success': False, 'message': 'Comment too long (max 1000 characters)'}), 400
     
-    # Sanitize content
+    # Sanitize content before storing
     content_sanitized = sanitize_html(content)
     
-    # Create comment
+    # Create comment with sanitized content
     comment = Comment(
         post_id=post_id,
         user_id=current_user.id,
-        content=content
+        content=content_sanitized  # Store sanitized content
     )
     db.session.add(comment)
     db.session.flush()
     
-    # Parse mentions
+    # Parse mentions from original content
     mentions = parse_mentions(content, current_user.id, comment_id=comment.id)
     for mention in mentions:
         db.session.add(mention)
@@ -564,7 +564,7 @@ def add_comment(post_id):
     # Return comment data
     comment_data = {
         'id': comment.id,
-        'content': content,
+        'content': content_sanitized,
         'content_html': highlight_mentions(content_sanitized),
         'time_ago': format_time_ago(comment.created_at),
         'user': {
