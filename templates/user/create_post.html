@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Create Post - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Create New Post</h1>
+</div>
+
+<div class="content-section">
+    <form method="POST" action="{{ url_for('create_post') }}" enctype="multipart/form-data" class="form">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.description.label }}
+            {{ form.description(class="form-control form-textarea", rows="5", placeholder="What's happening with your project?") }}
+            {% if form.description.errors %}
+                <div class="form-error">
+                    {% for error in form.description.errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.image.label }}
+            <div class="file-upload-wrapper">
+                {{ form.image(class="form-control-file", id="imageInput", accept="image/png,image/jpeg,image/jpg") }}
+                <div id="imagePreview" class="image-preview"></div>
+            </div>
+            {% if form.image.errors %}
+                <div class="form-error">
+                    {% for error in form.image.errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+            <small class="form-help">Accepted formats: PNG, JPG, JPEG (max 16MB)</small>
+        </div>
+        
+        <div class="form-group checkbox-group">
+            {{ form.is_global(class="form-checkbox") }}
+            {{ form.is_global.label }}
+            <small class="form-help">If checked, this post will be visible to all teams on the global timeline</small>
+        </div>
+        
+        <div class="form-group form-actions">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('team_timeline') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('imagePreview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview">';
+            preview.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        preview.innerHTML = '';
+        preview.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

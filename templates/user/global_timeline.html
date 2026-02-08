@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Global Timeline - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Global Timeline 🌍</h1>
+    <p>See what all teams are working on</p>
+</div>
+
+<div class="timeline">
+    {% if posts %}
+        {% for post in posts %}
+        <div class="post-card">
+            <div class="post-header">
+                <div class="post-author">
+                    {% if post.user.profile_picture %}
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + post.user.profile_picture) }}" 
+                             alt="{{ post.user.username }}" 
+                             class="profile-pic-small">
+                    {% else %}
+                        <div class="profile-pic-small profile-pic-default">
+                            {{ post.user.username[0].upper() }}
+                        </div>
+                    {% endif %}
+                    <div class="post-author-info">
+                        <strong>{{ post.user.username }}</strong>
+                        <span class="post-team">from {{ post.team.name }}</span>
+                        <span class="post-time">{{ post.created_at|time_ago }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="post-content">
+                <p>{{ post.description }}</p>
+                {% if post.image_path %}
+                    <div class="post-image">
+                        <img src="{{ url_for('static', filename='uploads/posts/' + post.image_path) }}" 
+                             alt="Post image"
+                             onclick="openImageModal(this.src)">
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>No global posts yet. Be the first to share with everyone!</p>
+            <a href="{{ url_for('create_post') }}" class="btn btn-primary">Create First Global Post</a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="modal" onclick="closeImageModal()">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openImageModal(src) {
+    document.getElementById('imageModal').style.display = 'block';
+    document.getElementById('modalImage').src = src;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
+</script>
+{% endblock %}

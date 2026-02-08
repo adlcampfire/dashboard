@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Admin Dashboard</h1>
+    <p>Welcome back, {{ current_user.username }}!</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+            <h3>{{ users_count }}</h3>
+            <p>Total Users</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-info">
+            <h3>{{ teams_count }}</h3>
+            <p>Total Teams</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-info">
+            <h3>{{ posts_count }}</h3>
+            <p>Total Posts</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🔑</div>
+        <div class="stat-info">
+            <h3>{{ codes_unused }}</h3>
+            <p>Unused Codes</p>
+        </div>
+    </div>
+</div>
+
+<div class="quick-actions">
+    <h2>Quick Actions</h2>
+    <div class="action-buttons">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Manage Users</a>
+        <a href="{{ url_for('admin_teams') }}" class="btn btn-primary">Manage Teams</a>
+        <a href="{{ url_for('admin_codes') }}" class="btn btn-primary">Manage Codes</a>
+    </div>
+</div>
+{% endblock %}

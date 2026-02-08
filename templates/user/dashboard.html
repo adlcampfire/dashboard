@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Welcome, {{ current_user.username }}! 🔥</h1>
+    {% if current_user.team %}
+        <p>Team: <strong>{{ current_user.team.name }}</strong></p>
+    {% else %}
+        <p class="text-warning">You are not assigned to a team yet. Contact an admin to join a team.</p>
+    {% endif %}
+</div>
+
+<div class="content-grid">
+    <div class="dashboard-card">
+        <div class="card-icon">👥</div>
+        <h3>Team Timeline</h3>
+        <p>View and share updates with your team members</p>
+        {% if current_user.team %}
+            <a href="{{ url_for('team_timeline') }}" class="btn btn-primary">View Team Timeline</a>
+        {% else %}
+            <button class="btn btn-secondary" disabled>Join a team first</button>
+        {% endif %}
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-icon">🌍</div>
+        <h3>Global Timeline</h3>
+        <p>See what all teams are working on</p>
+        <a href="{{ url_for('global_timeline') }}" class="btn btn-primary">View Global Timeline</a>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-icon">✍️</div>
+        <h3>Create Post</h3>
+        <p>Share your progress with a post</p>
+        {% if current_user.team %}
+            <a href="{{ url_for('create_post') }}" class="btn btn-primary">Create New Post</a>
+        {% else %}
+            <button class="btn btn-secondary" disabled>Join a team first</button>
+        {% endif %}
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-icon">👤</div>
+        <h3>Your Profile</h3>
+        <p>Update your profile picture and view your posts</p>
+        <a href="{{ url_for('profile') }}" class="btn btn-primary">View Profile</a>
+    </div>
+</div>
+
+<div class="content-section">
+    <h2>About the Hackathon</h2>
+    <div class="info-box">
+        <p>Welcome to Campfire Adelaide! This is your central hub for collaborating with your team and tracking progress during the hackathon.</p>
+        <ul>
+            <li>Share updates and images with your team on the Team Timeline</li>
+            <li>View what other teams are working on in the Global Timeline</li>
+            <li>Upload photos of your progress and creations</li>
+            <li>Collaborate and communicate with your teammates</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

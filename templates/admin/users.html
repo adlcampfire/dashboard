@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - Campfire Adelaide{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Manage Users</h1>
+</div>
+
+<div class="content-grid">
+    <div class="content-section">
+        <h2>Create New User</h2>
+        <form method="POST" action="{{ url_for('admin_users') }}" class="form">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.username.label }}
+                {{ form.username(class="form-control") }}
+                {% if form.username.errors %}
+                    <div class="form-error">
+                        {% for error in form.username.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.password.label }}
+                {{ form.password(class="form-control") }}
+                {% if form.password.errors %}
+                    <div class="form-error">
+                        {% for error in form.password.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.team_id.label }}
+                {{ form.team_id(class="form-control") }}
+            </div>
+            
+            <div class="form-group checkbox-group">
+                {{ form.is_admin(class="form-checkbox") }}
+                {{ form.is_admin.label }}
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+    
+    <div class="content-section">
+        <h2>Assign User to Team</h2>
+        <form method="POST" action="{{ url_for('admin_assign_team') }}" class="form">
+            {{ assign_form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ assign_form.user_id.label }}
+                {{ assign_form.user_id(class="form-control") }}
+            </div>
+            
+            <div class="form-group">
+                {{ assign_form.team_id.label }}
+                {{ assign_form.team_id(class="form-control") }}
+            </div>
+            
+            <div class="form-group">
+                {{ assign_form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="content-section">
+    <h2>All Users ({{ users|length }})</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Team</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>
+                        {% if user.is_admin %}
+                            <span class="badge badge-admin">Admin</span>
+                        {% else %}
+                            <span class="badge badge-user">User</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.team %}
+                            {{ user.team.name }}
+                        {% else %}
+                            <span class="text-muted">No team</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
