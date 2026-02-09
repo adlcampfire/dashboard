@@ -1,4 +1,3 @@
-"""Campfire Adelaide Dashboard - Main Application"""
 import os
 import random
 import string
@@ -21,12 +20,10 @@ from utils import (parse_mentions, highlight_mentions, sanitize_html, validate_u
                    create_audit_log, format_time_ago)
 from decorators import rate_limit, audit_log, judge_required
 
-# File upload constants
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov'}
 MAX_IMAGES_PER_POST = 10
 
-# Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///campfire.db')
@@ -34,14 +31,12 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size for videos
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 
-# Initialize extensions
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 
-# Initialize rate limiter
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
@@ -86,11 +81,9 @@ def save_upload(file, folder, allowed_extensions=None):
     if not file or not file.filename:
         return None
     
-    # Use default image extensions if not specified
     if allowed_extensions is None:
         allowed_extensions = ALLOWED_IMAGE_EXTENSIONS
     
-    # Check if file extension is allowed
     if '.' not in file.filename:
         return None
     
@@ -98,11 +91,9 @@ def save_upload(file, folder, allowed_extensions=None):
     if ext not in allowed_extensions:
         return None
     
-    # Generate unique filename
     filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
     
-    # Ensure directory exists
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     
     file.save(filepath)
@@ -131,7 +122,6 @@ def time_ago(dt):
         return dt.strftime('%b %d, %Y')
 
 
-# Add time_ago to Jinja2 context
 app.jinja_env.filters['time_ago'] = time_ago
 
 
@@ -140,7 +130,6 @@ def inject_global_data():
     """Inject data into all templates"""
     settings = get_site_settings()
     
-    # Get active announcements
     active_announcements = Announcement.query.filter(
         (Announcement.expires_at == None) | (Announcement.expires_at > datetime.utcnow())
     ).order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc()).all()
@@ -151,7 +140,6 @@ def inject_global_data():
     }
 
 
-# Authentication routes
 @app.route('/')
 def index():
     """Home page - redirect to appropriate dashboard"""
@@ -173,14 +161,12 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
-            # Check if user is banned
             if user.is_banned:
                 if user.banned_until and user.banned_until > datetime.utcnow():
                     flash(f'Your account is banned until {user.banned_until.strftime("%Y-%m-%d %H:%M")}. Reason: {user.ban_reason}', 'error')
                 elif not user.banned_until:
                     flash(f'Your account has been permanently banned. Reason: {user.ban_reason}', 'error')
                 else:
-                    # Ban expired, remove it
                     user.is_banned = False
                     user.banned_until = None
                     user.ban_reason = None
@@ -189,7 +175,6 @@ def login():
             if not user.is_banned:
                 login_user(user, remember=form.remember_me.data)
                 
-                # Create audit log
                 create_audit_log(
                     user_id=user.id,
                     action_type='login',
@@ -204,7 +189,6 @@ def login():
                 return redirect(next_page)
         else:
             flash('Invalid username or password', 'error')
-            # Log failed login attempt
             create_audit_log(
                 user_id=None,
                 action_type='failed_login',
@@ -223,16 +207,13 @@ def register():
     
     form = RegistrationForm()
     if form.validate_on_submit():
-        # Find the registration code
         reg_code = RegistrationCode.query.filter_by(code=form.code.data).first()
         
-        # Create new user
         user = User(username=form.username.data)
         user.set_password(form.password.data)
         db.session.add(user)
-        db.session.flush()  # Get user ID
+        db.session.flush()
         
-        # Mark code as used
         reg_code.is_used = True
         reg_code.used_by_user_id = user.id
         
@@ -259,7 +240,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-# Admin routes
 @app.route('/admin')
 @login_required
 @admin_required
@@ -285,12 +265,10 @@ def admin_users():
     form = CreateUserForm()
     assign_form = AssignTeamForm()
     
-    # Populate team choices
     teams = Team.query.all()
     form.team_id.choices = [(0, 'No Team')] + [(t.id, t.name) for t in teams]
     assign_form.team_id.choices = [(t.id, t.name) for t in teams]
     
-    # Populate user choices for assignment
     users = User.query.all()
     assign_form.user_id.choices = [(u.id, u.username) for u in users]
     
